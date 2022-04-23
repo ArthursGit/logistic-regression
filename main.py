@@ -10,8 +10,8 @@ from linear_regression import PyTorchLinearModel, train_pytorch_model
 from torch_helpers.TorchDataset import TorchDataset
 
 
-def sigmoid(x, theta):
-    return 1 / (1 + torch.exp(-1 * (theta @ x)))
+def sigmoid(x):
+    return 1 / (1 + torch.exp(-1 * x))
 
 
 def cost_difference(prediction, y):
@@ -21,7 +21,7 @@ def cost_difference(prediction, y):
 class LogisticRegressionModel:
 
     def __init__(self, n_features, n_classes=1):
-        self.theta = torch.randn(n_features, 1)
+        self.theta = torch.randn(n_features, n_classes)
 
     def forward(self, x):
         sigmoid_function = Sigmoid()
@@ -48,7 +48,8 @@ class LogisticRegressionModel:
 
 
 def main():
-    X, y = ds.make_classification(n_features=1, n_informative=1, n_redundant=0, n_clusters_per_class=1)
+    X, y = ds.make_classification(n_features=1, n_informative=1, n_redundant=0, n_clusters_per_class=1,
+                                  random_state=42)
     dataset = TorchDataset(X, y)
 
     validation_ration = 0.2
@@ -73,7 +74,6 @@ def main():
 
     plt.plot(x_values, y_values, color="red")
     plt.show()
-
 
 
 if __name__ == "__main__":
