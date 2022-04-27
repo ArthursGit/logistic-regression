@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 from tqdm import tqdm
-from torch.nn import Sigmoid
+from torch.nn import Sigmoid, Module
 
 from linear_regression import PyTorchLinearModel, train_pytorch_model
 from torch_helpers.TorchDataset import TorchDataset
@@ -47,24 +47,51 @@ class LogisticRegressionModel:
         return costs
 
 
+class LogisticRegressionPytorchModel(Module):
+
+    def __init__(self, n_features, n_output):
+        super().__init__()
+        self.linear = torch.nn.Linear(n_features, n_output)
+
+    def forward(self, x):
+        return torch.sigmoid(self.linear(x))
+
+
 def main():
-    X, y = ds.make_classification(n_features=1, n_informative=1, n_redundant=0, n_clusters_per_class=1,
+    X, y = ds.make_classification(n_features=1, n_samples=500, n_informative=1, n_redundant=0, n_clusters_per_class=1,
                                   random_state=42)
     dataset = TorchDataset(X, y)
 
     validation_ration = 0.2
-    batch_size = 32
-    n_epochs = 5000
-    learning_rate = 0.15
+    batch_size = 64
+    n_epochs = 1000
+    learning_rate = 0.1
 
+    n_features = 1
+    n_output = 1
     train_loader, validation_loader = dataset.get_train_and_validation_data(validation_ration, batch_size)
 
-    logistic_regression = LogisticRegressionModel(1)
+    logistic_regression = LogisticRegressionModel(n_features)
     costs = logistic_regression.train(train_loader, n_epochs, learning_rate, validation_loader)
-    plt.plot(costs)
-    plt.show()
 
-    plt.scatter(X, y)
+    pytorch_model = LogisticRegressionPytorchModel(n_features, n_output)
+    criterion = torch.nn.BCELoss()
+    optimizer = torch.optim.SGD(pytorch_model.parameters(), learning_rate)
+
+    # Training loop
+
+    for epoch in tqdm(range(n_epochs)):
+        for x_batch, y_batch in train_loader:
+            prediction = pytorch_model(x_batch)
+            loss = criterion(prediction, y_batch)
+            loss.backward()
+
+            optimizer.step()
+            optimizer.zero_grad()
+
+    # Validation
+
+    plt.plot(costs, color="green")
 
     x_values = np.linspace(-3, 3)
     y_values = []
@@ -72,7 +99,27 @@ def main():
         temp_tensor = torch.Tensor([x_value])
         y_values.append(float(logistic_regression.forward(temp_tensor)))
 
+    costs = []
+    with torch.no_grad():
+        for x_batch, y_batch in validation_loader:
+            prediction = pytorch_model(x_batch)
+            loss = criterion(prediction, y_batch)
+            costs.append(loss.item())
+    plt.show()
+
+    plt.plot(costs, color="red")
+    plt.show()
+
+    plt.scatter(X, y)
     plt.plot(x_values, y_values, color="red")
+    x_values = np.linspace(-3, 3)
+    y_values = []
+    with torch.no_grad():
+        for x_batch in x_values:
+            prediction = pytorch_model(torch.tensor([x_batch], dtype=torch.float32))
+            y_values += [i.item() for i in prediction]
+
+    plt.plot(x_values, y_values, color="green")
     plt.show()
 
 
